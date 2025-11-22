@@ -521,7 +521,7 @@ setInterval(() => {
     console.error("Fel i gameloop:", err);
     // fortsätt - nästa tick försöker igen
   }
-}, 1000 / 30);
+}, 1000 / 20);
 
 http.listen(port, () => {
   console.log(`Servern körs på http://localhost:${port}`);
