@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paintball</title>
+    <link rel="stylesheet" href="styles.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+</head>
+<body>
+    <div id="titleScreen">
+        <h1 style="font-size: 6em; margin-bottom: 20px; margin-top: -20px; text-shadow: 2px 0 #00000070, -2px 0 #00000070, 0 2px #00000070, 0 -2px #00000070, 1px 1px #00000070, -1px -1px #00000070, 1px -1px #00000070, -1px 1px #00000070; font-family:Arial, Helvetica, sans-serif;"><span style="font-style: italic; color: #ffffff;">paintball</span>.io</h1>
+        <p id="textBelowTitle">Kill other players to become #1...</p>
+        <input type="text" id="nicknameInput" autocomplete="off" placeholder="Nickname" maxlength="15">
+        <button id="playButton">Play</button>
+    </div>
+    <div id="infoBoard">
+        <p id="playersOnlineText">
+            Online: <span id="playersOnline" style="color: rgb(84, 175, 255);"></span> 
+        </p>
+    </div>
+    <div id="leaderBoard">
+        <p id="playerNr1"></p> <p id="playerKillsNr1" style="justify-self: end;"></p>
+        <p id="playerNr2"></p> <p id="playerKillsNr2" style="justify-self: end;"></p>
+        <p id="playerNr3"></p> <p id="playerKillsNr3" style="justify-self: end;"></p>
+        <p id="playerNr4"></p> <p id="playerKillsNr4" style="justify-self: end;"></p>
+        <p id="playerNr5"></p> <p id="playerKillsNr5" style="justify-self: end;"></p>
+    </div>
+    <div id="map"></div>
+    <div id="reload-bar">
+        <p id="reload-text"><span id="ammoAmount"></span> / 20</p>
+        <img id="reloadImg" src="./img/black_icon.png">
+        <p id="reloadLoadingText">reloading...</p>
+    </div>
+    <p id="building-material"><span id="building-material-left"></span>/3 (F to build)</p>
+    <div id="reload-bar-metre"></div>
+    <div id="gameWrapper">
+        <canvas id="canvas"></canvas>
+    </div>
+    <script src="background.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="socket.js"></script>
+</body>
+</html>
