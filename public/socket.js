@@ -48,6 +48,38 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
+socket.on('kicked-afk', (message) => {
+  alert(message);
+  
+  // Rensa spelaren visuellt
+  const div = players[thisPlayer];
+  const bar = document.getElementById(thisPlayer + 'HP');
+  const nameElem = document.getElementById(thisPlayer + 'Nametag');
+
+  if (div) div.remove();
+  if (bar) bar.remove();
+  if (nameElem) nameElem.remove();
+
+  delete players[thisPlayer];
+  thisPlayer = null;
+  
+  // Visa title screen igen
+  const title = document.getElementById("titleScreen");
+  title.style.display = "flex";
+  
+  document.getElementById('map').style.display = 'none';
+  document.getElementById('reload-bar').style.display = 'none';
+  document.getElementById('reload-bar-metre').style.display = 'none';
+  document.getElementById('leaderBoard').style.display = 'none';
+  document.getElementById('building-material').style.display = 'none';
+  
+  //Reconnect socket
+  socket.disconnect();
+  setTimeout(() => {
+    socket.connect();
+  }, 500);
+});
+
 function createPlayerDiv(id, x, y, color, nickname) {
   let border = `solid 3px hsl(${color}, 80%, 40%)`
   let arrowImg = './img/arrow_drop_down_40dp_000000_FILL0_wght400_GRAD0_opsz40.png'

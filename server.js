@@ -70,11 +70,13 @@ io.on('connection', (socket) => {
     if (!players[player.id]) return;
     players[player.id].velocity.x = player.velocity.x;
     players[player.id].velocity.y = player.velocity.y;
+    players[player.id].lastActivity = Date.now();
   });
 
   socket.on('playerRotated', (player) => {
     if (!players[player.id]) return;
     players[player.id].rotate = player.angleDeg;
+    players[player.id].lastActivity = Date.now();
   });
 
   socket.on('playerClicked', (projectile) => {
@@ -82,6 +84,8 @@ io.on('connection', (socket) => {
   
     let ammoLeft = players[projectile.id].reload;
     if (ammoLeft === 0) return;
+
+    players[projectile.id].lastActivity = Date.now();
 
     let radius = 13;
     let correctedX = parseFloat(projectile.x);
@@ -112,7 +116,8 @@ io.on('connection', (socket) => {
       interpolationValueY: 17,
       changedInterpolationValueX: false,
       changedInterpolationValueY: false,
-      throughWall: false
+      throughWall: false,
+      latestActive: Date.now()
     };
 
     projectiles.push(newProjectile);
@@ -129,6 +134,7 @@ io.on('connection', (socket) => {
 
   socket.on('playerReloaded', (playerId) => {
     players[playerId].reload = 20
+    players[playerId].latestActive = Date.now()
     socket.emit('reload-bar', players[playerId].reload)
   });
 
@@ -150,6 +156,8 @@ io.on('connection', (socket) => {
   socket.on('playerBuilding', (id) => {
     const player = players[id];
     if (!player) return;
+
+  player.lastActivity = Date.now();
 
     if (player.buildingMaterial > 0) {
       player.buildingMaterial--;
@@ -218,6 +226,30 @@ io.on('connection', (socket) => {
   });
 
 });
+
+// AFK Checker - kicka inaktiva spelare
+setInterval(() => {
+  const AFK_TIMEOUT = 5 * 60 * 1000; // 5 minuter i millisekunder
+  const now = Date.now();
+  
+  Object.values(players).forEach(player => {
+    if (now - player.lastActivity > AFK_TIMEOUT) {
+      
+      console.log(`Kickar AFK spelare: ${player.nickname} (${player.id})`);
+      
+      // Skicka meddelande till spelaren
+      io.to(player.id).emit('kicked-afk', 'You were kicked for being AFK');
+      
+      // Ta bort spelaren
+      delete players[player.id];
+      io.emit('player-left', player.id);
+      
+      // Koppla bort socket
+      const socket = io.sockets.sockets.get(player.id);
+      if (socket) socket.disconnect(true);
+    }
+  });
+}, 60 * 1000); // Kolla varje minut
 
 // --- Fade på projektil ---
 function fadeProjectile(projectile, duration) {
