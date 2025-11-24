@@ -35,6 +35,17 @@ io.on('connection', (socket) => {
   let nickname = "Unnamed";
 
   socket.on("setNickname", (nick) => {
+    // Cap på 60 spelare MAX
+    const MAX_PLAYERS = 50;
+    const currentPlayers = Object.keys(players).length;
+  
+    if (currentPlayers >= MAX_PLAYERS) {
+      console.log('🚫 SERVER FULL - Nekade spelare:', nick);
+      socket.emit('server-full', 'Server is full! Try again later.');
+      socket.disconnect(true);
+      return;
+    }
+
     nickname = nick;
 
     let hue = Math.floor(Math.random() * 360);

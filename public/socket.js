@@ -80,6 +80,27 @@ socket.on('kicked-afk', (message) => {
   }, 500);
 });
 
+socket.on('server-full', (message) => {
+  alert(message);
+  
+  // Säkerställ att title screen visas
+  const title = document.getElementById("titleScreen");
+  if (title) {
+    title.style.display = "flex";
+
+    document.getElementById('map').style.display = 'none';
+    document.getElementById('reload-bar').style.display = 'none';
+    document.getElementById('reload-bar-metre').style.display = 'none';
+    document.getElementById('leaderBoard').style.display = 'none';
+    document.getElementById('building-material').style.display = 'none';
+  }
+    //Reconnect socket
+  socket.disconnect();
+  setTimeout(() => {
+    socket.connect();
+  }, 500);
+});
+
 function createPlayerDiv(id, x, y, color, nickname) {
   let border = `solid 3px hsl(${color}, 80%, 40%)`
   let arrowImg = './img/arrow_drop_down_40dp_000000_FILL0_wght400_GRAD0_opsz40.png'
