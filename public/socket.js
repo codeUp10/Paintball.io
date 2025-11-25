@@ -8,7 +8,8 @@ const centerPosY = (-3006 + innerHeight) / 2 + 'px'
 gameWrapper.style.top = centerPosY
 gameWrapper.style.left = centerPosX
 
-let ammoLeft = 20
+let ammoLeft = 20;
+let inControlPanel = false;
 
 document.getElementById("playButton").addEventListener("click", () => {
   nickname = document.getElementById("nicknameInput").value.trim();
@@ -24,6 +25,19 @@ document.getElementById("playButton").addEventListener("click", () => {
   gameWrapper.style.left = '0px'
   // Skicka nickname till servern
   socket.emit("setNickname", nickname);
+});
+
+const backdropElm = document.getElementById('backdrop')
+const controlsImg = document.getElementById('controlsImg')
+document.getElementById("controlsButton").addEventListener("click", () => {
+  controlsImg.style.width = innerWidth * 0.55 + 'px'
+  controlsImg.style.height = parseFloat(controlsImg.style.width) * 0.5 + 'px'
+  controlsImg.style.display = 'flex'
+  backdropElm.style.display = 'flex'
+
+  setTimeout(() => {
+    inControlPanel = true;
+  }, 100);
 });
 
 const players = {}; 
@@ -512,6 +526,12 @@ socket.on('neutralizeVelocity', (side) => {
 
 let i = 0;
 document.addEventListener('click', (e) => {
+  // Klicka sig ur control panel
+  if (inControlPanel) {
+    inControlPanel = false
+    controlsImg.style.display = 'none'
+    backdropElm.style.display = 'none'
+  }
   const playerElem = players[thisPlayer];
   if (!playerElem) return;
 
