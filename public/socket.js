@@ -115,9 +115,11 @@ socket.on('server-full', (message) => {
   }, 500);
 });
 
+let playerColor
 function createPlayerDiv(id, x, y, color, nickname) {
   let border = `solid 3px hsl(${color}, 80%, 40%)`
   let arrowImg = './img/arrow_drop_down_40dp_000000_FILL0_wght400_GRAD0_opsz40.png'
+  playerColor = color
 
   const playerContainer = document.createElement('div')
   playerContainer.id = id;
@@ -167,6 +169,17 @@ function createPlayerDiv(id, x, y, color, nickname) {
   playerContainer.appendChild(gun);
   playerContainer.gun = gun;
 
+  const marker = document.createElement('div')
+  marker.style.id = id + 'Marker'
+  marker.style.position = 'absolute'
+  marker.style.width = '4px'
+  marker.style.height = '7px'
+  marker.style.backgroundColor = `hsl(${color}, 80%, 40%)`;
+  marker.style.right = '3px'
+  marker.style.top = '4px'
+
+  gun.appendChild(marker);
+
   const healthBar = document.createElement('div')
   healthBar.id = id + 'HP'
   healthBar.style.position = 'absolute'
@@ -206,6 +219,7 @@ function createPlayerDiv(id, x, y, color, nickname) {
 
   gameWrapper.appendChild(nametag)
   if (thisPlayer === id) {
+    document.getElementById('building-material').style.color = `hsla(${color}, 80%, 35%, 0.7)`
     document.getElementById('reload-bar-metre').style.backgroundColor = `hsla(${color}, 80%, 50%, 0.8)`
     document.getElementById('reload-text').style.color = `hsla(${color}, 80%, 50%, 0.8)`
     document.getElementById('reloadLoadingText').style.color = `hsla(${color}, 80%, 35%, 1)`
@@ -475,7 +489,7 @@ document.addEventListener("mousemove", (e) => {
   if (players[thisPlayer]) {
     players[thisPlayer].targetGunRotation = angleDeg;
   }
-
+  
   emitIfAlive('playerRotated', { id: socket.id, angleDeg })
 });
 
@@ -525,13 +539,7 @@ socket.on('neutralizeVelocity', (side) => {
 })
 
 let i = 0;
-document.addEventListener('click', (e) => {
-  // Klicka sig ur control panel
-  if (inControlPanel) {
-    inControlPanel = false
-    controlsImg.style.display = 'none'
-    backdropElm.style.display = 'none'
-  }
+function shootingEvent(e) {
   const playerElem = players[thisPlayer];
   if (!playerElem) return;
 
@@ -540,8 +548,8 @@ document.addEventListener('click', (e) => {
   const playerY = parseFloat(playerElem.style.top) + playerElem.offsetHeight / 2;
 
   // Musens världskordinater
-  const mouseWorldX = cameraPosition.x + e.clientX;
-  const mouseWorldY = cameraPosition.y + e.clientY;
+  const mouseWorldX = cameraPosition.x + mouseX;
+  const mouseWorldY = cameraPosition.y + mouseY;
 
   // *Checkar så att musen inte är i spelarens radius
   const extraValue = 25
@@ -580,6 +588,15 @@ document.addEventListener('click', (e) => {
   });
   
   i++;
+}
+
+document.addEventListener('click', (e) => {
+  if (inControlPanel) {
+    inControlPanel = false
+    controlsImg.style.display = 'none'
+    backdropElm.style.display = 'none'
+  }
+  shootingEvent(e);
 });
 
 socket.on('projectileDeleted', (projectileId) => {
@@ -657,6 +674,11 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyF') {
     emitIfAlive('playerBuilding', thisPlayer)
   }
+  
+  if (e.code === 'Space') {
+    shootingEvent(e);
+  }
+  
 });
 
 // Walls
