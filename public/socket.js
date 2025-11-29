@@ -981,10 +981,10 @@ socket.on("player-died", () => {
   if (nameElem) nameElem.remove();
 
   delete players[thisPlayer];
-  thisPlayer = null; // du har ingen egen spelare längre
+  thisPlayer = null;
 
-  // VISA AD (om på CrazyGames)
-  if (CrazySDK) {
+  // VISA AD (om SDK är ENABLED på CrazyGames)
+  if (CrazySDK && sdkEnabled) {
     console.log('Visar ad...');
     CrazySDK.ad.requestAd('midgame', {
       adFinished: () => {
@@ -1000,12 +1000,12 @@ socket.on("player-died", () => {
       }
     });
   } else {
-    // Ingen SDK = visa title screen direkt (på Railway)
+    // Ingen SDK eller SDK disabled = visa title screen direkt (på Railway)
+    console.log('No SDK or SDK disabled, showing title screen');
     showTitleScreen();
   }
 
-  i = 0
-  
+  i = 0;
 });
 
 // När någon lämnar
@@ -1038,9 +1038,8 @@ socket.on("remove-player", (id) => {
   delete players[id];
 });
 
-// När spelaren stänger/lämnar sidan
 window.addEventListener('beforeunload', () => {
-  if (CrazySDK) {
+  if (CrazySDK && sdkEnabled) {
     CrazySDK.game.gameplayStop();
   }
 });
