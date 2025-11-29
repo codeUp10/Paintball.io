@@ -1,17 +1,18 @@
 let CrazySDK = null;
+let sdkEnabled = false;
 
 // Försök initiera SDK (fungerar bara på CrazyGames)
 if (window.CrazyGames && window.CrazyGames.SDK) {
   window.CrazyGames.SDK.init()
     .then(() => {
       CrazySDK = window.CrazyGames.SDK;
-      console.log('✅ CrazyGames SDK initialized!');
-      
-      // Berätta för CrazyGames att gameplay startar
-      CrazySDK.game.gameplayStart();
+      sdkEnabled = true; // Markera att SDK faktiskt fungerar
+      console.log('✅ CrazyGames SDK initialized and ENABLED!');
     })
     .catch((error) => {
-      console.error('SDK init failed (normal på Railway):', error);
+      console.log('SDK init failed or disabled (normal på Railway):', error);
+      CrazySDK = null; // Sätt till null om det failar
+      sdkEnabled = false;
     });
 } else {
   console.log('SDK not available (normal på Railway)');
@@ -46,7 +47,7 @@ document.getElementById("playButton").addEventListener("click", () => {
   socket.emit("setNickname", nickname);
 
   // Berätta för CrazyGames att gameplay startar
-  if (CrazySDK) {
+  if (CrazySDK && sdkEnabled) {
     CrazySDK.game.gameplayStart();
   }
 });
