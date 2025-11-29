@@ -1,3 +1,22 @@
+let CrazySDK = null;
+
+// Försök initiera SDK (fungerar bara på CrazyGames)
+if (window.CrazyGames && window.CrazyGames.SDK) {
+  window.CrazyGames.SDK.init()
+    .then(() => {
+      CrazySDK = window.CrazyGames.SDK;
+      console.log('✅ CrazyGames SDK initialized!');
+      
+      // Berätta för CrazyGames att gameplay startar
+      CrazySDK.game.gameplayStart();
+    })
+    .catch((error) => {
+      console.error('SDK init failed (normal på Railway):', error);
+    });
+} else {
+  console.log('SDK not available (normal på Railway)');
+}
+
 const socket = io(window.location.origin);
 
 let nickname = null;
@@ -25,6 +44,11 @@ document.getElementById("playButton").addEventListener("click", () => {
   gameWrapper.style.left = '0px'
   // Skicka nickname till servern
   socket.emit("setNickname", nickname);
+
+  // Berätta för CrazyGames att gameplay startar
+  if (CrazySDK) {
+    CrazySDK.game.gameplayStart();
+  }
 });
 
 const backdropElm = document.getElementById('backdrop')
@@ -77,15 +101,7 @@ socket.on('kicked-afk', (message) => {
   delete players[thisPlayer];
   thisPlayer = null;
   
-  // Visa title screen igen
-  const title = document.getElementById("titleScreen");
-  title.style.display = "flex";
-  
-  document.getElementById('map').style.display = 'none';
-  document.getElementById('reload-bar').style.display = 'none';
-  document.getElementById('reload-bar-metre').style.display = 'none';
-  document.getElementById('leaderBoard').style.display = 'none';
-  document.getElementById('building-material').style.display = 'none';
+  showTitleScreen()
   
   //Reconnect socket
   socket.disconnect();
@@ -319,6 +335,17 @@ socket.on('new-player', (player) => {
 });
 
 
+function showTitleScreen() {
+  const title = document.getElementById("titleScreen");
+  title.style.display = "flex";
+  title.style.opacity = 1;
+
+  document.getElementById('map').style.display = 'none';
+  document.getElementById('reload-bar').style.display = 'none';
+  document.getElementById('reload-bar-metre').style.display = 'none';
+  document.getElementById('leaderBoard').style.display = 'none';
+  document.getElementById('building-material').style.display = 'none';
+}
 
 let velocity = { x: 0, y: 0};
 let keypressed = { w: false, a: false, s: false, d: false };
@@ -955,16 +982,27 @@ socket.on("player-died", () => {
   delete players[thisPlayer];
   thisPlayer = null; // du har ingen egen spelare längre
 
-  // Visa titleScreen men låt världen fortsätta synas
-  const title = document.getElementById("titleScreen");
-  title.style.display = "flex";
-  title.style.opacity = 1;
+  // VISA AD (om på CrazyGames)
+  if (CrazySDK) {
+    console.log('Visar ad...');
+    CrazySDK.ad.requestAd('midgame', {
+      adFinished: () => {
+        console.log('Ad klar!');
+        showTitleScreen();
+      },
+      adError: (error) => {
+        console.log('Ad error:', error);
+        showTitleScreen();
+      },  
+      adStarted: () => {
+        console.log('Ad startad');
+      }
+    });
+  } else {
+    // Ingen SDK = visa title screen direkt (på Railway)
+    showTitleScreen();
+  }
 
-  document.getElementById('map').style.display = 'none';
-  document.getElementById('reload-bar').style.display = 'none';
-  document.getElementById('reload-bar-metre').style.display = 'none';
-  document.getElementById('leaderBoard').style.display = 'none'
-  document.getElementById('building-material').style.display = 'none';
   i = 0
   
 });
@@ -997,4 +1035,11 @@ socket.on("remove-player", (id) => {
   if (nameElem) nameElem.remove();
 
   delete players[id];
+});
+
+// När spelaren stänger/lämnar sidan
+window.addEventListener('beforeunload', () => {
+  if (CrazySDK) {
+    CrazySDK.game.gameplayStop();
+  }
 });
