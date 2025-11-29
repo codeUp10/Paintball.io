@@ -40,6 +40,7 @@ gameWrapper.style.left = centerPosX
 
 let ammoLeft = 20;
 let inControlPanel = false;
+let showAAd = false;
 
 document.getElementById("playButton").addEventListener("click", () => {
   nickname = document.getElementById("nicknameInput").value.trim();
@@ -53,8 +54,14 @@ document.getElementById("playButton").addEventListener("click", () => {
   document.getElementById('leaderBoard').style.display = 'grid'
   gameWrapper.style.top = '0px'
   gameWrapper.style.left = '0px'
+  
   // Skicka nickname till servern
   socket.emit("setNickname", nickname);
+  
+  // Starta timer för nästa ad (alltid 1 minut efter spawn)
+  setTimeout(() => {
+    showAAd = true;
+  }, 1 * 60 * 1000);  // 1 minut
 
   // Berätta för CrazyGames att gameplay startar
   if (CrazySDK && sdkEnabled) {
@@ -135,7 +142,7 @@ socket.on('server-full', (message) => {
     document.getElementById('leaderBoard').style.display = 'none';
     document.getElementById('building-material').style.display = 'none';
   }
-    //Reconnect socket
+  //Reconnect socket
   socket.disconnect();
   setTimeout(() => {
     socket.connect();
@@ -993,16 +1000,18 @@ socket.on("player-died", () => {
   delete players[thisPlayer];
   thisPlayer = null;
 
-  // VISA AD (om SDK är ENABLED på CrazyGames)
-  if (CrazySDK && sdkEnabled) {
-    console.log('Visar ad...');
+  // VISA AD (om SDK är ENABLED på CrazyGames OCH minst 1 min spelat)
+  if (CrazySDK && sdkEnabled && showAAd) {
+    console.log('Visar ad (spelat över 1 minut)...');
     CrazySDK.ad.requestAd('midgame', {
       adFinished: () => {
         console.log('Ad klar!');
+        showAAd = false;
         showTitleScreen();
       },
       adError: (error) => {
         console.log('Ad error:', error);
+        showAAd = false;
         showTitleScreen();
       },  
       adStarted: () => {
@@ -1010,8 +1019,9 @@ socket.on("player-died", () => {
       }
     });
   } else {
-    // Ingen SDK eller SDK disabled = visa title screen direkt (på Railway)
-    console.log('No SDK or SDK disabled, showing title screen');
+    // Ingen SDK, SDK disabled, eller < 1 minut spelat
+    console.log('Ingen ad (SDK disabled eller < 1 min spelat)');
+    showAAd = false;
     showTitleScreen();
   }
 
