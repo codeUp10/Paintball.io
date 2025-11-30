@@ -41,6 +41,7 @@ gameWrapper.style.left = centerPosX
 let ammoLeft = 20;
 let inControlPanel = false;
 let showAAd = false;
+let isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
 document.getElementById("playButton").addEventListener("click", () => {
   nickname = document.getElementById("nicknameInput").value.trim();
@@ -54,6 +55,11 @@ document.getElementById("playButton").addEventListener("click", () => {
   document.getElementById('leaderBoard').style.display = 'grid'
   gameWrapper.style.top = '0px'
   gameWrapper.style.left = '0px'
+
+  if (isMobile) {
+    document.getElementById('mobile-controls').style.display = 'block';
+    document.getElementById('building-material').innerHTML = '<span id="building-material-left"></span>/3';
+  }
   
   // Skicka nickname till servern
   socket.emit("setNickname", nickname);
@@ -81,6 +87,139 @@ document.getElementById("controlsButton").addEventListener("click", () => {
     inControlPanel = true;
   }, 100);
 });
+
+if (isMobile) {
+  // Joystick för rörelse
+  const joystickZone = document.getElementById('joystick-zone');
+  const joystickStick = document.getElementById('joystick-stick');
+  
+  let joystickActive = false;
+  let joystickStartX = 0;
+  let joystickStartY = 0;
+  
+  joystickZone.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    joystickActive = true;
+    const rect = joystickZone.getBoundingClientRect();
+    joystickStartX = rect.left + rect.width / 2;
+    joystickStartY = rect.top + rect.height / 2;
+  });
+  
+  joystickZone.addEventListener('touchmove', (e) => {
+    if (!joystickActive) return;
+    e.preventDefault();
+    
+    const touch = e.touches[0];
+    const dx = touch.clientX - joystickStartX;
+    const dy = touch.clientY - joystickStartY;
+    
+    // Begränsa joystick till cirkel
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const maxDistance = 45;
+    
+    let finalX = dx;
+    let finalY = dy;
+    
+    if (distance > maxDistance) {
+      finalX = (dx / distance) * maxDistance;
+      finalY = (dy / distance) * maxDistance;
+    }
+    
+    joystickStick.style.transform = `translate(calc(-50% + ${finalX}px), calc(-50% + ${finalY}px))`;
+    
+    // Sätt velocity baserat på joystick
+    const normalizedX = finalX / maxDistance;
+    const normalizedY = finalY / maxDistance;
+    
+    // Uppdatera keypressed baserat på joystick
+    keypressed.w = normalizedY < -0.3;
+    keypressed.s = normalizedY > 0.3;
+    keypressed.a = normalizedX < -0.3;
+    keypressed.d = normalizedX > 0.3;
+    
+    updateVelocity();
+  });
+  
+  joystickZone.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    joystickActive = false;
+    joystickStick.style.transform = 'translate(-50%, -50%)';
+    
+    // Stoppa rörelse
+    keypressed.w = false;
+    keypressed.s = false;
+    keypressed.a = false;
+    keypressed.d = false;
+    updateVelocity();
+  });
+  
+  // Shoot button
+  const shootButton = document.getElementById('shoot-button');
+  shootButton.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    shootingEvent(e);
+  });
+  
+  // Build button
+  const buildButton = document.getElementById('build-button');
+  buildButton.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    emitIfAlive('playerBuilding', thisPlayer);
+  });
+  
+  // Reload button
+  const reloadButton = document.getElementById('reload-button');
+  reloadButton.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (ammoLeft === 0 && oneTime) {
+      reloadLoadingText.style.display = 'flex';
+      oneTime = false;
+      setTimeout(() => {
+        emitIfAlive('playerReloaded', thisPlayer);
+        oneTime = true;
+      }, 2000);
+    }
+  });
+  
+  document.addEventListener('touchmove', (e) => {
+    if (!thisPlayer) return;
+    
+    const touch = e.touches[0];
+    const touchX = touch.clientX;
+    const touchY = touch.clientY;
+    
+    // Definiera control-zoner (vänster och höger kanter)
+    const joystickZone = { x: 0, y: 0, width: 250, height: window.innerHeight };
+    const buttonZone = { x: window.innerWidth - 200, y: 0, width: 200, height: window.innerHeight };
+    
+    // Skippa rotation om touch är i control-zonerna
+    if (
+      (touchX < joystickZone.width) || // Vänster sida (joystick)
+      (touchX > buttonZone.x)           // Höger sida (knappar)
+    ) {
+      return;
+    }
+    
+    // Nu är vi i "aim zone" (mitten av skärmen)
+    mouseX = touchX;
+    mouseY = touchY;
+    
+    const playerCenterX = window.innerWidth / 2;
+    const playerCenterY = window.innerHeight / 2;
+
+    const dx = mouseX - playerCenterX;
+    const dy = mouseY - playerCenterY;
+
+    const angleRad = Math.atan2(dy, dx);
+    angleDeg = angleRad * (180 / Math.PI);
+
+    if (players[thisPlayer]) {
+      players[thisPlayer].targetGunRotation = angleDeg;
+    }
+    
+    emitIfAlive('playerRotated', { id: socket.id, angleDeg });
+  });
+}
 
 const players = {}; 
 let projectiles = [];
@@ -133,6 +272,9 @@ socket.on('server-full', (message) => {
   
   // Säkerställ att title screen visas
   const title = document.getElementById("titleScreen");
+  if (isMobile) {
+    document.getElementById('mobile-controls').style.display = 'none';
+  }
   if (title) {
     title.style.display = "flex";
 
@@ -357,6 +499,9 @@ function showTitleScreen() {
   const title = document.getElementById("titleScreen");
   title.style.display = "flex";
   title.style.opacity = 1;
+  if (isMobile) {
+    document.getElementById('mobile-controls').style.display = 'none';
+  }
 
   document.getElementById('map').style.display = 'none';
   document.getElementById('reload-bar').style.display = 'none';
@@ -873,6 +1018,9 @@ function animate() {
         nametagElement.style.left = innerWidth / 2 - width / 2 + 'px'
         nametagElement.style.fontSize = '30px'
         nametagElement.style.width = width + 'px'
+        if (isMobile) {
+          nametagElement.style.bottom = 15 + 'px'
+        }
       } else {
         nametagElement.style.left = nameX + "px";
         nametagElement.style.top = nameY + "px";
