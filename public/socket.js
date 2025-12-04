@@ -55,6 +55,7 @@ document.getElementById("playButton").addEventListener("click", () => {
   document.getElementById('leaderBoard').style.display = 'grid'
   gameWrapper.style.top = '0px'
   gameWrapper.style.left = '0px'
+  gameWrapper.style.transformOrigin = '0 0';
 
   if (isMobile) {
     document.getElementById('mobile-controls').style.display = 'block';
@@ -93,64 +94,119 @@ if (isMobile) {
   const joystickZone = document.getElementById('joystick-zone');
   const joystickStick = document.getElementById('joystick-stick');
   
-  let joystickActive = false;
+  let joystickTouchId = null; // Spara vilken touch som styr joysticken
   let joystickStartX = 0;
   let joystickStartY = 0;
   
   joystickZone.addEventListener('touchstart', (e) => {
     e.preventDefault();
-    joystickActive = true;
-    const rect = joystickZone.getBoundingClientRect();
-    joystickStartX = rect.left + rect.width / 2;
-    joystickStartY = rect.top + rect.height / 2;
+    if (joystickTouchId === null && e.touches.length > 0) {
+      joystickTouchId = e.touches[0].identifier; // Spara touch ID
+      const rect = joystickZone.getBoundingClientRect();
+      joystickStartX = rect.left + rect.width / 2;
+      joystickStartY = rect.top + rect.height / 2;
+    }
   });
   
-  joystickZone.addEventListener('touchmove', (e) => {
-    if (!joystickActive) return;
-    e.preventDefault();
+  document.addEventListener('touchmove', (e) => {
+    // Hitta joystick touch och rotation touch separat
+    let joystickTouch = null;
+    let rotationTouch = null;
     
-    const touch = e.touches[0];
-    const dx = touch.clientX - joystickStartX;
-    const dy = touch.clientY - joystickStartY;
-    
-    // Begränsa joystick till cirkel
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    const maxDistance = 45;
-    
-    let finalX = dx;
-    let finalY = dy;
-    
-    if (distance > maxDistance) {
-      finalX = (dx / distance) * maxDistance;
-      finalY = (dy / distance) * maxDistance;
+    for (let i = 0; i < e.touches.length; i++) {
+      const touch = e.touches[i];
+      
+      if (touch.identifier === joystickTouchId) {
+        joystickTouch = touch;
+      } else if (thisPlayer) {
+        // Andra touches används för rotation (om inte på knappar)
+        const touchX = touch.clientX;
+        const touchY = touch.clientY;
+        
+        // Kolla om touchen är på knappar
+        const buttonZone = { x: window.innerWidth - 200, y: 0, width: 200, height: window.innerHeight };
+        
+        if (touchX > buttonZone.x) {
+          continue; // Skippa denna touch (den är på knappar)
+        }
+        
+        rotationTouch = touch;
+      }
     }
     
-    joystickStick.style.transform = `translate(calc(-50% + ${finalX}px), calc(-50% + ${finalY}px))`;
+    // Hantera joystick
+    if (joystickTouch) {
+      const dx = joystickTouch.clientX - joystickStartX;
+      const dy = joystickTouch.clientY - joystickStartY;
+      
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const maxDistance = 45;
+      
+      let finalX = dx;
+      let finalY = dy;
+      
+      if (distance > maxDistance) {
+        finalX = (dx / distance) * maxDistance;
+        finalY = (dy / distance) * maxDistance;
+      }
+      
+      joystickStick.style.transform = `translate(calc(-50% + ${finalX}px), calc(-50% + ${finalY}px))`;
+      
+      const normalizedX = finalX / maxDistance;
+      const normalizedY = finalY / maxDistance;
+      
+      keypressed.w = normalizedY < -0.3;
+      keypressed.s = normalizedY > 0.3;
+      keypressed.a = normalizedX < -0.3;
+      keypressed.d = normalizedX > 0.3;
+      
+      updateVelocity();
+    }
     
-    // Sätt velocity baserat på joystick
-    const normalizedX = finalX / maxDistance;
-    const normalizedY = finalY / maxDistance;
-    
-    // Uppdatera keypressed baserat på joystick
-    keypressed.w = normalizedY < -0.3;
-    keypressed.s = normalizedY > 0.3;
-    keypressed.a = normalizedX < -0.3;
-    keypressed.d = normalizedX > 0.3;
-    
-    updateVelocity();
+    // Hantera rotation (separat från joystick)
+    if (rotationTouch && thisPlayer) {
+      mouseX = rotationTouch.clientX;
+      mouseY = rotationTouch.clientY;
+      
+      const playerCenterX = window.innerWidth / 2;
+      const playerCenterY = window.innerHeight / 2;
+
+      const dx = mouseX - playerCenterX;
+      const dy = mouseY - playerCenterY;
+
+      const angleRad = Math.atan2(dy, dx);
+      angleDeg = angleRad * (180 / Math.PI);
+
+      if (players[thisPlayer]) {
+        players[thisPlayer].targetGunRotation = angleDeg;
+      }
+      
+      emitIfAlive('playerRotated', { id: socket.id, angleDeg });
+    }
   });
   
   joystickZone.addEventListener('touchend', (e) => {
     e.preventDefault();
-    joystickActive = false;
-    joystickStick.style.transform = 'translate(-50%, -50%)';
     
-    // Stoppa rörelse
-    keypressed.w = false;
-    keypressed.s = false;
-    keypressed.a = false;
-    keypressed.d = false;
-    updateVelocity();
+    // Kolla om joystick-touchen släpptes
+    let joystickReleased = true;
+    for (let i = 0; i < e.touches.length; i++) {
+      if (e.touches[i].identifier === joystickTouchId) {
+        joystickReleased = false;
+        break;
+      }
+    }
+    
+    if (joystickReleased) {
+      joystickTouchId = null;
+      joystickStick.style.transform = 'translate(-50%, -50%)';
+      
+      keypressed.w = false;
+      keypressed.s = false;
+      keypressed.a = false;
+      keypressed.d = false;
+      updateVelocity();
+    }
   });
   
   // Shoot button
@@ -179,45 +235,6 @@ if (isMobile) {
         oneTime = true;
       }, 2000);
     }
-  });
-  
-  document.addEventListener('touchmove', (e) => {
-    if (!thisPlayer) return;
-    
-    const touch = e.touches[0];
-    const touchX = touch.clientX;
-    const touchY = touch.clientY;
-    
-    // Definiera control-zoner (vänster och höger kanter)
-    const joystickZone = { x: 0, y: 0, width: 250, height: window.innerHeight };
-    const buttonZone = { x: window.innerWidth - 200, y: 0, width: 200, height: window.innerHeight };
-    
-    // Skippa rotation om touch är i control-zonerna
-    if (
-      (touchX < joystickZone.width) || // Vänster sida (joystick)
-      (touchX > buttonZone.x)           // Höger sida (knappar)
-    ) {
-      return;
-    }
-    
-    // Nu är vi i "aim zone" (mitten av skärmen)
-    mouseX = touchX;
-    mouseY = touchY;
-    
-    const playerCenterX = window.innerWidth / 2;
-    const playerCenterY = window.innerHeight / 2;
-
-    const dx = mouseX - playerCenterX;
-    const dy = mouseY - playerCenterY;
-
-    const angleRad = Math.atan2(dy, dx);
-    angleDeg = angleRad * (180 / Math.PI);
-
-    if (players[thisPlayer]) {
-      players[thisPlayer].targetGunRotation = angleDeg;
-    }
-    
-    emitIfAlive('playerRotated', { id: socket.id, angleDeg });
   });
 }
 
@@ -737,9 +754,20 @@ function shootingEvent(e) {
   const playerX = parseFloat(playerElem.style.left) + playerElem.offsetWidth / 2;
   const playerY = parseFloat(playerElem.style.top) + playerElem.offsetHeight / 2;
 
-  // Musens världskordinater
-  const mouseWorldX = cameraPosition.x + mouseX;
-  const mouseWorldY = cameraPosition.y + mouseY;
+  // Zoom level (samma som i animate)
+  const zoomLevel = isMobile ? 0.75 : 1.0;
+
+  // Skärmens centrum
+  const screenCenterX = window.innerWidth / 2;
+  const screenCenterY = window.innerHeight / 2;
+
+  // Musens offset från skärmens centrum (justerat för zoom)
+  const mouseOffsetX = (mouseX - screenCenterX) / zoomLevel;
+  const mouseOffsetY = (mouseY - screenCenterY) / zoomLevel;
+
+  // Musens världskoordinater
+  const mouseWorldX = cameraPosition.x + mouseOffsetX;
+  const mouseWorldY = cameraPosition.y + mouseOffsetY;
 
   // *Checkar så att musen inte är i spelarens radius
   const extraValue = 25
@@ -1039,48 +1067,56 @@ function animate() {
       playerDiv.style.transform = `rotate(${playerDiv.currentRotation}deg)`;
     }
 
-    // Kamera följer "thisPlayer"
+    // Kamera följer spelaren
     if (playerDiv.id === thisPlayer) {
-      const targetCameraX = currentX + parseInt(playerDiv.style.width) / 2 - window.innerWidth / 2;
-      const targetCameraY = currentY + parseInt(playerDiv.style.height) / 2 - window.innerHeight / 2;
+      const playerCenterX = currentX + playerDiv.offsetWidth / 2;
+      const playerCenterY = currentY + playerDiv.offsetHeight / 2;
 
-      cameraPosition.x += (targetCameraX - cameraPosition.x) * 0.2;
-      cameraPosition.y += (targetCameraY - cameraPosition.y) * 0.2;
+      cameraPosition.x += (playerCenterX - cameraPosition.x) * 0.2;
+      cameraPosition.y += (playerCenterY - cameraPosition.y) * 0.2;
 
-      gameWrapper.style.transform =
-        `translate(${-cameraPosition.x}px, ${-cameraPosition.y}px)`;
+      // Zoom: mobil zoomar ut för att se mer
+      const zoomLevel = isMobile ? 0.75 : 1.0;
+
+      const screenCenterX = window.innerWidth / 2;
+      const screenCenterY = window.innerHeight / 2;
+
+      const tx = screenCenterX - (cameraPosition.x * zoomLevel);
+      const ty = screenCenterY - (cameraPosition.y * zoomLevel);
+
+      gameWrapper.style.transform = `translate(${tx}px, ${ty}px) scale(${zoomLevel})`;
     }
 
-  // Map Nodes
-  const nodeExist = document.getElementById(playerDiv.id + 'Node') !== null;
-  if (!nodeExist) {
-    let newNode = document.createElement('div'); 
-    newNode.id = playerDiv.id + 'Node';
-    
-    let radius = 7;
-    newNode.style.backgroundColor = `hsl(${playerDiv.color}, 80%, 50%)`;
-    newNode.style.width = radius + 'px';
-    newNode.style.height = radius + 'px';
-    newNode.style.position = 'absolute';
-    newNode.style.zIndex = 1001;
-    newNode.style.borderRadius = '50%';
-    
-    mapElm.appendChild(newNode);
-  }
+    // Map Nodes
+    const nodeExist = document.getElementById(playerDiv.id + 'Node') !== null;
+    if (!nodeExist) {
+      let newNode = document.createElement('div'); 
+      newNode.id = playerDiv.id + 'Node';
+      
+      let radius = 7;
+      newNode.style.backgroundColor = `hsl(${playerDiv.color}, 80%, 50%)`;
+      newNode.style.width = radius + 'px';
+      newNode.style.height = radius + 'px';
+      newNode.style.position = 'absolute';
+      newNode.style.zIndex = 1001;
+      newNode.style.borderRadius = '50%';
+      
+      mapElm.appendChild(newNode);
+    }
 
-  const allNodes = mapElm.querySelectorAll("div[id$='Node']");
-  allNodes.forEach(div => {
-    const baseId = div.id.replace(/Node$/, ''); 
-      if (!(baseId in players)) {
-        div.remove();
-        return;
-      }
-      const playerWithId = players[baseId]
-      const scale = gameWrapper.offsetWidth / sideLength;
-    
-      div.style.left = (parseFloat(playerWithId.style.left) / scale) + 'px';
-      div.style.top = (parseFloat(playerWithId.style.top) / scale) + 'px';
-    });
+    const allNodes = mapElm.querySelectorAll("div[id$='Node']");
+    allNodes.forEach(div => {
+      const baseId = div.id.replace(/Node$/, ''); 
+        if (!(baseId in players)) {
+          div.remove();
+          return;
+        }
+        const playerWithId = players[baseId]
+        const scale = gameWrapper.offsetWidth / sideLength;
+      
+        div.style.left = (parseFloat(playerWithId.style.left) / scale) + 'px';
+        div.style.top = (parseFloat(playerWithId.style.top) / scale) + 'px';
+      });
   }
 
   const scale = 3006 / sideLength;
