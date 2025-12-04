@@ -182,7 +182,7 @@ if (isMobile) {
       mouseY = rotationTouch.clientY;
       
       // Zoom level (samma som i animate)
-      const zoomLevel = isMobile ? 0.75 : 1.0;
+      const zoomLevel = isMobile ? 0.6 : 1.0;
       
       const playerCenterX = window.innerWidth / 2;
       const playerCenterY = window.innerHeight / 2;
@@ -781,7 +781,7 @@ function shootingEvent(e) {
   const playerY = parseFloat(playerElem.style.top) + playerElem.offsetHeight / 2;
 
   // Zoom level (samma som i animate)
-  const zoomLevel = isMobile ? 0.75 : 1.0;
+  const zoomLevel = isMobile ? 0.6 : 1.0;
 
   // Skärmens centrum
   const screenCenterX = window.innerWidth / 2;
@@ -1102,7 +1102,7 @@ function animate() {
       cameraPosition.y += (playerCenterY - cameraPosition.y) * 0.2;
 
       // Zoom: mobil zoomar ut för att se mer
-      const zoomLevel = isMobile ? 0.75 : 1.0;
+      const zoomLevel = isMobile ? 0.6 : 1.0;
 
       const screenCenterX = window.innerWidth / 2;
       const screenCenterY = window.innerHeight / 2;
