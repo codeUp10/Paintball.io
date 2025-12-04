@@ -97,11 +97,14 @@ if (isMobile) {
   let joystickTouchId = null; // Spara vilken touch som styr joysticken
   let joystickStartX = 0;
   let joystickStartY = 0;
+  let rotationTouchId = null; // Spara vilken touch som styr rotation
   
   joystickZone.addEventListener('touchstart', (e) => {
     e.preventDefault();
-    if (joystickTouchId === null && e.touches.length > 0) {
-      joystickTouchId = e.touches[0].identifier; // Spara touch ID
+    if (joystickTouchId === null) {
+      // Ta första touchen i joystick-zonen
+      const touch = e.changedTouches[0];
+      joystickTouchId = touch.identifier;
       const rect = joystickZone.getBoundingClientRect();
       joystickStartX = rect.left + rect.width / 2;
       joystickStartY = rect.top + rect.height / 2;
@@ -118,19 +121,29 @@ if (isMobile) {
       
       if (touch.identifier === joystickTouchId) {
         joystickTouch = touch;
-      } else if (thisPlayer) {
-        // Andra touches används för rotation (om inte på knappar)
+      } else if (thisPlayer && touch.identifier === rotationTouchId) {
+        // Använd endast den sparade rotation touch
+        rotationTouch = touch;
+      } else if (thisPlayer && rotationTouchId === null) {
+        // Om ingen rotation touch är satt, använd första touchen utanför knappar
         const touchX = touch.clientX;
         const touchY = touch.clientY;
         
-        // Kolla om touchen är på knappar
+        // Kolla om touchen är på knappar eller joystick
         const buttonZone = { x: window.innerWidth - 200, y: 0, width: 200, height: window.innerHeight };
+        const joystickRect = joystickZone.getBoundingClientRect();
         
         if (touchX > buttonZone.x) {
           continue; // Skippa denna touch (den är på knappar)
         }
         
+        if (touchX >= joystickRect.left && touchX <= joystickRect.right &&
+            touchY >= joystickRect.top && touchY <= joystickRect.bottom) {
+          continue; // Skippa denna touch (den är på joystick)
+        }
+        
         rotationTouch = touch;
+        rotationTouchId = touch.identifier; // Spara denna touch för rotation
       }
     }
     
@@ -168,11 +181,14 @@ if (isMobile) {
       mouseX = rotationTouch.clientX;
       mouseY = rotationTouch.clientY;
       
+      // Zoom level (samma som i animate)
+      const zoomLevel = isMobile ? 0.75 : 1.0;
+      
       const playerCenterX = window.innerWidth / 2;
       const playerCenterY = window.innerHeight / 2;
 
-      const dx = mouseX - playerCenterX;
-      const dy = mouseY - playerCenterY;
+      const dx = (mouseX - playerCenterX) / zoomLevel;
+      const dy = (mouseY - playerCenterY) / zoomLevel;
 
       const angleRad = Math.atan2(dy, dx);
       angleDeg = angleRad * (180 / Math.PI);
@@ -206,6 +222,16 @@ if (isMobile) {
       keypressed.a = false;
       keypressed.d = false;
       updateVelocity();
+    }
+  });
+  
+  // Lyssna på touchend globalt för att rensa rotation touch
+  document.addEventListener('touchend', (e) => {
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier === rotationTouchId) {
+        rotationTouchId = null;
+        break;
+      }
     }
   });
   
