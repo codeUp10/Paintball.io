@@ -28,7 +28,8 @@ if (window.CrazyGames && window.CrazyGames.SDK) {
   console.log('SDK not available (normal på Railway)');
 }
 
-const socket = io(window.location.origin);
+const BACKEND_URL = "https://paintballio-production.up.railway.app/";
+const socket = io(BACKEND_URL); // Anslut direkt till din Railway-server
 
 let nickname = null;
 // Set gameWrapper i mitten
