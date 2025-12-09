@@ -4,8 +4,13 @@ const http = require('http').createServer(app);
 const { Server } = require('socket.io');
 const io = new Server(http, {
   cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
+    origin: [
+      "*",
+      "https://crazygames.com",
+      "https://*.crazygames.com"  // För preview-domäner
+    ],
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
 const port = process.env.PORT || 3000;
