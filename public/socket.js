@@ -28,8 +28,11 @@ if (window.CrazyGames && window.CrazyGames.SDK) {
   console.log('SDK not available (normal på Railway)');
 }
 
-const BACKEND_URL = "https://paintballio-production.up.railway.app/";
-const socket = io(BACKEND_URL); // Anslut direkt till din Railway-server
+const BACKEND_URL = window.location.hostname === "localhost" 
+    ? "http://localhost:3000" 
+    : "https://paintballio-production.up.railway.app/";
+
+const socket = io(BACKEND_URL);
 
 let nickname = null;
 // Set gameWrapper i mitten
@@ -60,6 +63,9 @@ document.getElementById("playButton").addEventListener("click", () => {
 
   if (isMobile) {
     document.getElementById('mobile-controls').style.display = 'block';
+    document.getElementById('building-material').innerHTML = '<span id="building-material-left"></span>/3';
+  }
+  if (innerWidth <= 950) {
     document.getElementById('building-material').innerHTML = '<span id="building-material-left"></span>/3';
   }
   
@@ -972,6 +978,14 @@ function animate() {
   mapElm.style.width = sideLength + 'px'
   mapElm.style.height = sideLength + 'px'
 
+  // --- Title (titlescreen) ---
+  const titleElm = document.getElementById('title')
+  let widthOfTitle = innerWidth * 0.45
+    if (innerWidth <= 950) {
+    widthOfTitle = innerWidth * 0.65
+  }
+  titleElm.style.width = widthOfTitle + 'px'
+
   // --- Reload Bar ---
   const reloadBar = document.getElementById('reload-bar')
   const reloadBarMetre = document.getElementById('reload-bar-metre')
@@ -1073,7 +1087,7 @@ function animate() {
         nametagElement.style.left = innerWidth / 2 - width / 2 + 'px'
         nametagElement.style.fontSize = '30px'
         nametagElement.style.width = width + 'px'
-        if (isMobile) {
+        if (isMobile || innerWidth <= 950) {
           nametagElement.style.bottom = 15 + 'px'
         }
       } else {
